@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Rotation</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:flex-start; justify-content:center;
+    padding:60px 20px; font-family:'Inter',system-ui,sans-serif;
+    background:linear-gradient(160deg,#8b8fd9 0%,#6f8fd6 35%,#7bb8c9 70%,#9fd4a8 100%);
+  }
+  .widget{
+    width:100%; max-width:420px;
+    background:linear-gradient(160deg,#3a6fa8 0%,#2f5f96 100%);
+    border-radius:28px; padding:24px 22px 20px;
+    box-shadow:0 20px 40px rgba(20,40,70,.35);
+    color:#fff;
+  }
+  .strip{
+    display:flex; gap:6px; overflow-x:auto; margin-bottom:16px; padding-bottom:2px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;
+  }
+  .strip::-webkit-scrollbar{display:none;}
+  .strip .pill{
+    flex:0 0 40px; text-align:center; padding:7px 0; border-radius:12px;
+    background:rgba(255,255,255,.1); cursor:pointer;
+  }
+  .strip .pill .dow{font-size:9px; opacity:.65; text-transform:uppercase;}
+  .strip .pill .num{font-size:14px; font-weight:700; margin-top:2px;}
+  .strip .pill.today{background:rgba(255,255,255,.22);}
+  .strip .pill.sel{background:#fff; color:#2f5f96;}
+  .strip .pill.sel .dow{opacity:.6;}
+  .nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .nav button{
+    background:rgba(255,255,255,.15); border:none; color:#fff; width:32px; height:32px;
+    border-radius:50%; font-size:16px; cursor:pointer;
+  }
+  .nav .label{font-size:13px; font-weight:600; opacity:.85; text-transform:capitalize; cursor:pointer;}
+  .title-row{margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;}
+  .title-row .day-title{font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:700; margin:0;}
+  .title-actions{display:flex; gap:6px;}
+  .today-btn{
+    background:rgba(255,255,255,.16); border:none; color:#fff; font-size:11.5px; font-weight:600;
+    padding:6px 12px; border-radius:20px; cursor:pointer; white-space:nowrap;
+  }
+  tbody tr.selected td{background:rgba(232,163,61,.30);}
+  tbody tr.selected td:first-child{border-radius:10px 0 0 10px;}
+  tbody tr.selected td:last-child{border-radius:0 10px 10px 0;}
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.5); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .overlay.show{display:flex;}
+  .picker{
+    background:#2f5f96; border-radius:20px; padding:22px; width:100%; max-width:340px; color:#fff;
+  }
+  .picker h3{margin:0 0 14px; font-family:'Space Grotesk',sans-serif; font-size:17px;}
+  .picker input[type="date"]{
+    width:100%; padding:10px 12px; border-radius:10px; border:none; font-size:15px;
+    font-family:inherit; margin-bottom:16px;
+  }
+  .picker .actions{display:flex; gap:10px;}
+  .picker button{
+    flex:1; padding:11px; border-radius:12px; border:none; font-weight:700; font-size:14px; cursor:pointer;
+  }
+  .picker .confirm{background:#E8A33D; color:#1a1a1a;}
+  .picker .cancel{background:rgba(255,255,255,.15); color:#fff;}
+  .title-row .day-sub{font-size:12px; opacity:.65; margin-top:2px;}
+  .table-wrap{overflow-y:auto; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:14px; max-height:340px;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:center; font-weight:600; opacity:.65; font-size:10.5px; text-transform:uppercase;
+    padding:6px 4px; letter-spacing:.03em; position:sticky; top:0; background:#33608f;
+  }
+  thead th:first-child{text-align:left;}
+  tbody td{text-align:center; padding:8px 4px; border-top:1px solid rgba(255,255,255,.12);}
+  tbody td:first-child{text-align:left; white-space:nowrap;}
+  tbody tr.today td{background:rgba(255,255,255,.14);}
+  tbody tr.today td:first-child{border-radius:10px 0 0 10px;}
+  tbody tr.today td:last-child{border-radius:0 10px 10px 0;}
+  .jour-cell .dow{font-weight:600; text-transform:capitalize;}
+  .jour-cell .num{opacity:.6; font-size:11px;}
+  .badge{
+    width:24px; height:24px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+    font-size:12.5px; font-weight:700; font-family:'Space Grotesk',sans-serif;
+  }
+  .badge.A{background:#E8A33D; color:#1a1a1a;}
+  .badge.B{background:#3FA796; color:#0a1a18;}
+  .badge.C{background:#D9685F; color:#1a1a1a;}
+  .badge.D{background:#8B95E8; color:#12122e;}
+  .footer{
+    margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,.18);
+    font-size:12px; opacity:.7; display:flex; align-items:center; gap:6px;
+  }
+  .no-data{font-size:13px; opacity:.8; padding:14px 0; text-align:center;}
+
+  .tabs{display:flex; gap:6px; margin-bottom:16px;}
+  .tabbtn{
+    flex:1; text-align:center; padding:9px 4px; border-radius:10px; font-size:13px;
+    font-weight:600; color:rgba(255,255,255,.6); background:rgba(255,255,255,.08); cursor:pointer;
+  }
+  .tabbtn.active{color:#2f5f96; background:#fff;}
+  .maintab{display:none;}
+  .maintab.active{display:block;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; opacity:.7; margin-bottom:5px;}
+  .field input, .field select{
+    width:100%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.25); color:#fff;
+    padding:10px 12px; border-radius:10px; font-size:14px; font-family:inherit;
+  }
+  .field select option{color:#1a1a1a;}
+  .team-checks{display:flex; gap:10px;}
+  .team-check{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.25); border-radius:10px;
+    padding:8px 0; cursor:pointer;
+  }
+  .team-check input{width:14px; height:14px;}
+  .team-check .badge{width:20px; height:20px; font-size:11px;}
+  .plan-row{
+    display:flex; justify-content:space-between; align-items:center; padding:10px 0;
+    border-top:1px solid rgba(255,255,255,.15);
+  }
+  .plan-row:first-child{border-top:none;}
+  .plan-day{font-size:13px; font-weight:600;}
+  .plan-slot{font-size:11px; opacity:.65; margin-top:1px;}
+  .plan-reason{font-size:10.5px; opacity:.55; margin-top:1px; font-style:italic;}
+  .warn-box{
+    background:rgba(217,104,95,.22); border:1px solid rgba(217,104,95,.5); border-radius:12px;
+    padding:12px; font-size:12.5px; margin-top:10px; line-height:1.5;
+  }
+  .ok-box{
+    background:rgba(63,167,150,.2); border:1px solid rgba(63,167,150,.5); border-radius:12px;
+    padding:10px 12px; font-size:12px; margin-top:10px;
+  }
+  .hours-table{width:100%; border-collapse:collapse; margin-top:8px; font-size:11.5px;}
+  .hours-table th, .hours-table td{padding:6px 4px; text-align:center; border-top:1px solid rgba(255,255,255,.15);}
+  .hours-table th{opacity:.6; font-weight:600; font-size:10px; text-transform:uppercase;}
+
+  .row2{display:flex; gap:10px;}
+  .row2 .field{flex:1;}
+  .conge-row{padding:11px 0; border-top:1px solid rgba(255,255,255,.15); display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .conge-row:first-child{border-top:none;}
+  .conge-nom{font-weight:700; font-size:14px;}
+  .conge-meta{font-size:11.5px; opacity:.7; margin-top:2px;}
+  .conge-actions{display:flex; gap:6px; flex-shrink:0;}
+  .conge-actions button{
+    background:rgba(255,255,255,.12); border:none; color:#fff; font-size:11px; padding:6px 10px;
+    border-radius:8px; cursor:pointer;
+  }
+  .conge-actions .del{background:rgba(217,104,95,.3);}
+  .type-tag{
+    display:inline-block; font-size:9.5px; font-weight:700; text-transform:uppercase; padding:2px 7px;
+    border-radius:10px; background:rgba(232,163,61,.3); margin-left:6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="widget">
+  <div class="tabs">
+    <div class="tabbtn active" data-tab="rotation" onclick="showMainTab('rotation')">Rotation</div>
+    <div class="tabbtn" data-tab="formation" onclick="showMainTab('formation')">Formation</div>
+    <div class="tabbtn" data-tab="conges" onclick="showMainTab('conges')">Congés</div>
+  </div>
+
+  <div class="maintab active" id="maintab-rotation">
+    <div class="title-row">
+      <div class="day-title">Rotation des équipes</div>
+      <div class="title-actions">
+        <button class="today-btn" onclick="openMonthPicker()">📅 Mois</button>
+        <button class="today-btn" onclick="goToToday()">Aujourd'hui</button>
+      </div>
+    </div>
+    <div class="nav">
+      <button onclick="shiftWindow(-7)">‹</button>
+      <div class="label" id="navLabel" onclick="resetWindow()">n-7 → n+7</div>
+      <button onclick="shiftWindow(7)">›</button>
+    </div>
+    <div class="table-wrap">
+      <table id="table">
+        <thead>
+          <tr><th>Jour</th><th>Matin</th><th>Après-midi</th><th>Nuit</th><th>Repos</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="maintab" id="maintab-formation">
+    <div class="title-row">
+      <div class="day-title">Planifier une formation</div>
+    </div>
+    <div class="field"><label>Du</label><input type="date" id="fDebut"></div>
+    <div class="field"><label>Au</label><input type="date" id="fFin"></div>
+    <div class="field">
+      <label>Durée de la formation</label>
+      <select id="fDuree">
+        <option value="demi">Demi-journée (quelques heures)</option>
+        <option value="jour">Journée entière (2x12)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Équipes concernées</label>
+      <div class="team-checks">
+        <label class="team-check"><input type="checkbox" value="A" checked> <span class="badge A">A</span></label>
+        <label class="team-check"><input type="checkbox" value="B" checked> <span class="badge B">B</span></label>
+        <label class="team-check"><input type="checkbox" value="C" checked> <span class="badge C">C</span></label>
+        <label class="team-check"><input type="checkbox" value="D" checked> <span class="badge D">D</span></label>
+      </div>
+    </div>
+    <button class="today-btn" style="width:100%; padding:11px; font-size:13px;" onclick="genererFormation()">Générer le planning</button>
+    <div id="formationResult" style="margin-top:16px;"></div>
+  </div>
+
+  <div class="maintab" id="maintab-conges">
+    <div class="title-row">
+      <div class="day-title">Congés & permissions</div>
+    </div>
+    <input type="hidden" id="cId" value="">
+    <div class="field"><label>Nom</label><input type="text" id="cNom" placeholder="Nom de la personne"></div>
+    <div class="row2">
+      <div class="field"><label>Équipe</label>
+        <select id="cEquipe"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+      </div>
+      <div class="field"><label>Type</label>
+        <select id="cType"><option>Congé</option><option>Permission</option></select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Du</label><input type="date" id="cDebut"></div>
+      <div class="field"><label>Au</label><input type="date" id="cFin"></div>
+    </div>
+    <div class="row2">
+      <button class="today-btn" style="flex:1; padding:11px; font-size:13px;" id="cSubmitBtn" onclick="submitConge()">Ajouter</button>
+      <button class="today-btn" style="flex:1; padding:11px; font-size:13px; background:rgba(255,255,255,.08); display:none;" id="cCancelBtn" onclick="cancelEditConge()">Annuler</button>
+    </div>
+    <div id="congesList" style="margin-top:16px;"></div>
+  </div>
+
+  <div class="footer">📋 Rotation des équipes · Camp 25-26</div>
+</div>
+
+<div class="overlay" id="overlayPicker" onclick="if(event.target.id==='overlayPicker') closeMonthPicker()">
+  <div class="picker">
+    <h3>Voir une période</h3>
+    <input type="date" id="pickDate">
+    <div class="actions">
+      <button class="cancel" onclick="closeMonthPicker()">Annuler</button>
+      <button class="confirm" onclick="confirmMonthPick()">Voir la période</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Moteur du cycle réel (usine H24, 4 équipes) ----------
+// Chaque équipe suit le même cycle de 8 jours, décalée de 2 jours par rapport à la suivante :
+// Jours 1-2 : Après-midi (14h30-21h00)
+// Jours 3-4 : Matin      (07h30-14h30)
+// Jours 5-6 : Nuit       (21h00-07h30)
+// Jours 7-8 : Repos
+// La journée d'usine commence à 07h30 et finit à 07h30 le lendemain.
+
+const CYCLE_ANCHOR = new Date(2026, 4, 17); // 17/05/2026 = jour 0 de référence (vu sur le Sheet)
+const OFFSET = { A: 4, B: 0, C: 2, D: 6 };  // décalage de phase de chaque équipe à l'ancre
+const PHASES = [
+  { key:'apres', label:'Après-midi', hours:'14h30 – 21h00' },
+  { key:'apres', label:'Après-midi', hours:'14h30 – 21h00' },
+  { key:'matin', label:'Matin',       hours:'07h30 – 14h30' },
+  { key:'matin', label:'Matin',       hours:'07h30 – 14h30' },
+  { key:'nuit',  label:'Nuit',        hours:'21h00 – 07h30' },
+  { key:'nuit',  label:'Nuit',        hours:'21h00 – 07h30' },
+  { key:'repos', label:'Repos',       hours:'' },
+  { key:'repos', label:'Repos',       hours:'' }
+];
+
+function dayIndexOf(date){
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return Math.round((d - CYCLE_ANCHOR) / 86400000);
+}
+
+function phaseForTeam(team, dayIndex){
+  const p = ((dayIndex + OFFSET[team]) % 8 + 8) % 8;
+  return PHASES[p];
+}
+
+function findRow(date){
+  const idx = dayIndexOf(date);
+  const out = {};
+  ['A','B','C','D'].forEach(team => { out[team] = phaseForTeam(team, idx); });
+  const byKey = { matin:null, apres:null, nuit:null, repos:null };
+  Object.entries(out).forEach(([team, phase]) => { byKey[phase.key] = team; });
+  return {
+    matin: byKey.matin, apres: byKey.apres, nuit: byKey.nuit, repos: byKey.repos,
+    hours: { matin:'07h30 – 14h30', apres:'14h30 – 21h00', nuit:'21h00 – 07h30', repos:'' }
+  };
+}
+
+// "Heure d'usine actuelle" : la journée d'usine commence à 07h30
+function currentBusinessDate(){
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if(now.getHours() < 7 || (now.getHours()===7 && now.getMinutes()<30)) d.setDate(d.getDate()-1);
+  return d;
+}
+function currentPhaseKey(){
+  const now = new Date();
+  const h = now.getHours() + now.getMinutes()/60;
+  if(h >= 7.5 && h < 14.5) return 'matin';
+  if(h >= 14.5 && h < 21) return 'apres';
+  return 'nuit';
+}
+
+let windowOffset = 0;
+let selectedOffset = null;
+function shiftWindow(delta){ windowOffset += delta; render(); }
+function resetWindow(){ windowOffset = 0; render(); }
+function goToToday(){
+  windowOffset = 0;
+  selectedOffset = null;
+  render();
+  const todayRow = document.querySelector('tr.today');
+  if(todayRow) todayRow.scrollIntoView({ block:'center', behavior:'smooth' });
+}
+
+function openMonthPicker(){
+  const today = new Date();
+  document.getElementById('pickDate').value = today.toISOString().slice(0,10);
+  document.getElementById('overlayPicker').classList.add('show');
+}
+function closeMonthPicker(){
+  document.getElementById('overlayPicker').classList.remove('show');
+}
+function confirmMonthPick(){
+  const val = document.getElementById('pickDate').value;
+  if(!val) return;
+  const chosen = new Date(val + 'T00:00:00');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffDays = Math.round((chosen - today) / 86400000);
+  windowOffset = diffDays;
+  selectedOffset = diffDays;
+  closeMonthPicker();
+  render();
+  const target = document.querySelector('tr.selected') || document.querySelector('tr.today');
+  if(target) target.scrollIntoView({ block:'center', behavior:'smooth' });
+}
+
+function render(){
+  const dows = ['dim','lun','mar','mer','jeu','ven','sam'];
+  const rowsHtml = [];
+  for(let i=-7; i<=7; i++){
+    const dayOffset = windowOffset + i;
+    const date = new Date(); date.setDate(date.getDate() + dayOffset);
+    const row = findRow(date);
+    const isToday = dayOffset === 0;
+    const isSelected = selectedOffset !== null && dayOffset === selectedOffset;
+    rowsHtml.push(`
+      <tr class="${isToday?'today':''} ${isSelected?'selected':''}">
+        <td class="jour-cell">
+          <div class="dow">${dows[date.getDay()]}</div>
+          <div class="num">${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}</div>
+        </td>
+        <td><span class="badge ${row.matin}">${row.matin}</span></td>
+        <td><span class="badge ${row.apres}">${row.apres}</span></td>
+        <td><span class="badge ${row.nuit}">${row.nuit}</span></td>
+        <td><span class="badge ${row.repos}">${row.repos}</span></td>
+      </tr>`);
+  }
+  document.getElementById('tbody').innerHTML = rowsHtml.join('');
+
+  const focusRow = document.querySelector('tr.selected') || document.querySelector('tr.today');
+  if(focusRow) focusRow.scrollIntoView({ block:'center' });
+
+  const first = new Date(); first.setDate(first.getDate() + windowOffset - 7);
+  const last = new Date(); last.setDate(last.getDate() + windowOffset + 7);
+  const fmt = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('navLabel').textContent =
+    windowOffset === 0 ? 'n-7 → n+7' : `${fmt(first)} → ${fmt(last)}`;
+}
+
+// =====================================================================
+// MOTEUR DE PLANIFICATION DES FORMATIONS
+// =====================================================================
+const TEAMS = ['A','B','C','D'];
+const SHIFT_HOURS = { matin:7, apres:6.5, nuit:10.5, repos:0 };
+
+// Transitions sûres entre 2 jours consécutifs pour une même équipe
+// (repos <-> tout : toujours sûr ; apres->matin et matin->nuit : ordre normal du cycle ;
+//  répéter le même poste : sûr. Le reste (matin->apres, apres->nuit, nuit->matin) est interdit.)
+const SAFE_TRANSITIONS = new Set([
+  'repos>apres','repos>matin','repos>nuit','repos>repos',
+  'apres>repos','matin>repos','nuit>repos',
+  'apres>matin','matin>nuit',
+  'apres>apres','matin>matin','nuit>nuit'
+]);
+function isSafeTransition(a,b){ return SAFE_TRANSITIONS.has(a+'>'+b); }
+
+function roleOf(team, date){ return phaseForTeam(team, dayIndexOf(date)).key; } // 'matin'|'apres'|'nuit'|'repos'
+function assignmentOf(date){
+  const a = {};
+  TEAMS.forEach(t => a[t] = roleOf(t, date));
+  return a;
+}
+function sameAssignment(a,b){ return TEAMS.every(t => a[t]===b[t]); }
+
+// Éligibilité pour une DEMI-JOURNÉE
+function eligibleHalfDay(role, prevRole){
+  if(role === 'apres') return { ok:true, debut:'8h', fin:'12h', regle:'Après-midi, avant prise de poste 14h30 — Règle 1' };
+  if(role === 'matin') return { ok:true, debut:'15h', fin:'19h', regle:'Matin, 30 min après fin de poste — Règle 2' };
+  if(role === 'repos' && prevRole === 'repos') return { ok:true, debut:'9h', fin:'13h', regle:'2e jour de repos — Règle 5' };
+  if(role === 'nuit' && prevRole === 'matin') return { ok:true, debut:'15h', fin:'19h', regle:'Reposée depuis Matin la veille, poste Nuit 21h — Règle 6' };
+  return { ok:false };
+}
+function eligibleFullDay(role, prevRole){
+  if(role === 'apres') return { ok:true, debut:'8h', fin:'18h', regle:'Après-midi absorbée — 2x12' };
+  if(role === 'repos' && prevRole === 'repos') return { ok:true, debut:'8h', fin:'18h', regle:'2e jour de repos — 2x12' };
+  return { ok:false };
+}
+
+function eligibleFor(role, prevRole, duree){
+  return duree === 'jour' ? eligibleFullDay(role, prevRole) : eligibleHalfDay(role, prevRole);
+}
+
+function weeklyHours(startDate, endDate){
+  // heures totales par équipe sur la fenêtre [startDate, endDate] inclus
+  const totals = { A:0, B:0, C:0, D:0 };
+  const d = new Date(startDate);
+  while(d <= endDate){
+    TEAMS.forEach(t => totals[t] += SHIFT_HOURS[roleOf(t, d)]);
+    d.setDate(d.getDate()+1);
+  }
+  return totals;
+}
+function hoursVariance(totals){
+  const vals = TEAMS.map(t => totals[t]);
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  return vals.reduce((s,v)=>s + Math.pow(v-avg,2), 0);
+}
+
+function rolePermsForTeams(){
+  const roles = ['matin','apres','nuit','repos'];
+  const results = [];
+  function permute(arr, used){
+    if(used.length === TEAMS.length){ results.push(used.slice()); return; }
+    for(const r of arr){
+      if(used.some(u=>u.role===r)) continue;
+      used.push({ team:TEAMS[used.length], role:r });
+      permute(arr, used);
+      used.pop();
+    }
+  }
+  permute(roles, []);
+  return results.map(list => {
+    const obj = {};
+    list.forEach(({team,role}) => obj[team]=role);
+    return obj;
+  });
+}
+const ALL_PERMS = rolePermsForTeams();
+
+function addDaysD(date, n){ const d = new Date(date); d.setDate(d.getDate()+n); return d; }
+
+// Recherche par force brute d'une permutation minimale qui couvre les équipes manquantes
+// et resynchronise avec la rotation de base juste après la fenêtre.
+function searchSwap(startDate, endDate, duree, targetTeams=TEAMS, maxBufferDays=4){
+  const before = addDaysD(startDate, -1);
+  const days = [];
+  let d = new Date(startDate);
+  while(d <= endDate){ days.push(new Date(d)); d.setDate(d.getDate()+1); }
+
+  for(let buffer=0; buffer<=maxBufferDays; buffer++){
+    const resyncDate = addDaysD(endDate, 1+buffer);
+    const extraDays = [];
+    for(let i=1;i<=buffer;i++) extraDays.push(addDaysD(endDate,i));
+    const allDays = [before, ...days, ...extraDays, resyncDate];
+    const baseFirst = assignmentOf(before);
+    const baseLast = assignmentOf(resyncDate);
+
+    let best = null;
+    function backtrack(i, prevAssign, chosen, freed){
+      if(best) return; // on garde la première solution trouvée à ce niveau de buffer (perturbation minimale déjà favorisée par l'ordre)
+      if(i === allDays.length){
+        if(sameAssignment(chosen[chosen.length-1], baseLast) && targetTeams.every(t=>freed[t])){
+          best = { days: allDays.slice(), assigns: chosen.slice(), freed: Object.assign({},freed) };
+        }
+        return;
+      }
+      const day = allDays[i];
+      if(i===0){
+        chosen.push(baseFirst);
+        backtrack(1, baseFirst, chosen, freed);
+        chosen.pop();
+        return;
+      }
+      for(const perm of ALL_PERMS){
+        let ok = true;
+        for(const t of TEAMS){ if(!isSafeTransition(prevAssign[t], perm[t])){ ok=false; break; } }
+        if(!ok) continue;
+        chosen.push(perm);
+        const newFreed = Object.assign({}, freed);
+        const isWindowDay = day >= startDate && day <= endDate;
+        if(isWindowDay){
+          targetTeams.forEach(t => {
+            if(!newFreed[t]){
+              const e = eligibleFor(perm[t], prevAssign[t], duree);
+              if(e.ok) newFreed[t] = { date:new Date(day), ...e };
+            }
+          });
+        }
+        backtrack(i+1, perm, chosen, newFreed);
+        chosen.pop();
+        if(best) return;
+      }
+    }
+    backtrack(0, null, [], {});
+    if(best) return best;
+  }
+  return null;
+}
+
+function genererFormation(){
+  const debutVal = document.getElementById('fDebut').value;
+  const finVal = document.getElementById('fFin').value;
+  const duree = document.getElementById('fDuree').value;
+  const box = document.getElementById('formationResult');
+  if(!debutVal || !finVal){ box.innerHTML = '<div class="warn-box">Renseigne une date de début et de fin.</div>'; return; }
+
+  const selectedTeams = Array.from(document.querySelectorAll('.team-check input:checked')).map(el => el.value);
+  if(selectedTeams.length === 0){ box.innerHTML = '<div class="warn-box">Coche au moins une équipe.</div>'; return; }
+
+  const startDate = new Date(debutVal + 'T00:00:00');
+  const endDate = new Date(finVal + 'T00:00:00');
+  if(endDate < startDate){ box.innerHTML = '<div class="warn-box">La date de fin doit être après la date de début.</div>'; return; }
+
+  // 1) Essai naturel (sans permutation)
+  const plan = {};
+  const d = new Date(startDate);
+  const naturalDays = [];
+  while(d <= endDate){
+    naturalDays.push(new Date(d));
+    d.setDate(d.getDate()+1);
+  }
+  naturalDays.forEach(day => {
+    const prevDay = addDaysD(day,-1);
+    selectedTeams.forEach(t => {
+      if(plan[t]) return;
+      const role = roleOf(t, day);
+      const prevRole = roleOf(t, prevDay);
+      const e = eligibleFor(role, prevRole, duree);
+      if(e.ok) plan[t] = { date: new Date(day), ...e };
+    });
+  });
+
+  let usedSwap = false;
+  let finalPlan = plan;
+  let swapResult = null;
+  if(!selectedTeams.every(t => plan[t])){
+    swapResult = searchSwap(startDate, endDate, duree, selectedTeams);
+    if(swapResult){
+      usedSwap = true;
+      finalPlan = swapResult.freed;
+    }
+  }
+
+  // rendu
+  let html = '';
+  const allCovered = selectedTeams.every(t => finalPlan[t]);
+
+  if(!allCovered){
+    const missing = selectedTeams.filter(t => !finalPlan[t]);
+    html += `<div class="warn-box">⚠️ Impossible de former ${missing.join(', ')} dans cette fenêtre en respectant les règles de sécurité (transitions de poste), même avec des permutations.<br>Élargis la période ou prévois une session séparée pour ${missing.length>1?'ces équipes':'cette équipe'}.</div>`;
+  }
+
+  if(usedSwap){
+    html += `<div class="warn-box" style="background:rgba(232,163,61,.2); border-color:rgba(232,163,61,.5);">🔁 La rotation normale ne suffisait pas — une permutation temporaire a été appliquée. Tout redevient identique à la rotation prévue dès le lendemain de la fenêtre.</div>`;
+  } else {
+    html += `<div class="ok-box">✅ Aucune permutation nécessaire — la rotation normale suffit à former ${selectedTeams.length>1?'les équipes sélectionnées':'l\'équipe sélectionnée'}.</div>`;
+  }
+
+  html += '<div style="margin-top:12px;">';
+
+  // Regroupement par jour : "Lundi 20/07/2026 — Groupe 1: 8h-12h Équipe A ..."
+  const byDay = {};
+  selectedTeams.forEach(t => {
+    const p = finalPlan[t];
+    if(!p) return;
+    const key = p.date.toISOString().slice(0,10);
+    if(!byDay[key]) byDay[key] = { date: p.date, entries: [] };
+    byDay[key].entries.push({ team:t, ...p });
+  });
+  const sortedDays = Object.keys(byDay).sort();
+  const dowFull = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+
+  sortedDays.forEach(key => {
+    const { date, entries } = byDay[key];
+    entries.sort((a,b) => parseInt(a.debut) - parseInt(b.debut));
+    const dateStr = `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
+    html += `<div style="margin-top:14px; font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:700;">${dowFull[date.getDay()]} ${dateStr}</div>`;
+    entries.forEach((e, idx) => {
+      html += `
+        <div class="plan-row">
+          <div>
+            <div class="plan-day">Groupe ${idx+1} : ${e.debut}-${e.fin} — <span class="badge ${e.team}" style="width:20px;height:20px;font-size:11px;display:inline-flex;align-items:center;justify-content:center;">${e.team}</span> Équipe ${e.team}</div>
+            <div class="plan-reason">${e.regle}</div>
+          </div>
+        </div>`;
+    });
+  });
+
+  const notPlanned = selectedTeams.filter(t => !finalPlan[t]);
+  if(notPlanned.length){
+    html += `<div class="plan-row"><div class="plan-day">Non planifiées : ${notPlanned.join(', ')}</div></div>`;
+  }
+  html += '</div>';
+
+  // Nouvelle rotation sur la période, si des permutations ont été appliquées
+  if(usedSwap && swapResult){
+    html += `<div style="margin-top:16px; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700;">Nouvelle rotation sur la période</div>`;
+    html += '<table class="hours-table" style="margin-top:8px;"><thead><tr><th style="text-align:left;">Jour</th><th>Matin</th><th>Après-midi</th><th>Nuit</th><th>Repos</th></tr></thead><tbody>';
+    swapResult.days.forEach((day, i) => {
+      const assign = swapResult.assigns[i];
+      const base = assignmentOf(day);
+      const changed = TEAMS.some(t => assign[t] !== base[t]);
+      const dow3 = ['dim','lun','mar','mer','jeu','ven','sam'][day.getDay()];
+      const dateStr = `${String(day.getDate()).padStart(2,'0')}/${String(day.getMonth()+1).padStart(2,'0')}`;
+      const findTeam = role => TEAMS.find(t => assign[t]===role);
+      html += `<tr style="${changed?'background:rgba(232,163,61,.18);':''}">
+        <td style="text-align:left;">${dow3} ${dateStr}</td>
+        <td><span class="badge ${findTeam('matin')}" style="width:20px;height:20px;font-size:11px;">${findTeam('matin')}</span></td>
+        <td><span class="badge ${findTeam('apres')}" style="width:20px;height:20px;font-size:11px;">${findTeam('apres')}</span></td>
+        <td><span class="badge ${findTeam('nuit')}" style="width:20px;height:20px;font-size:11px;">${findTeam('nuit')}</span></td>
+        <td><span class="badge ${findTeam('repos')}" style="width:20px;height:20px;font-size:11px;">${findTeam('repos')}</span></td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    html += `<div style="font-size:10.5px; opacity:.6; margin-top:4px;">🟧 = jour modifié par rapport à la rotation prévue</div>`;
+  }
+
+  // Équilibrage des heures sur la semaine (lundi-dimanche) englobant la période
+  const weekStart = new Date(startDate);
+  const dow0 = weekStart.getDay();
+  const diffToMonday = (dow0 === 0 ? -6 : 1 - dow0);
+  weekStart.setDate(weekStart.getDate() + diffToMonday);
+  const weekEnd = addDaysD(weekStart, 6);
+
+  const baseline = weeklyHours(weekStart, weekEnd);
+  html += `<div style="margin-top:14px; font-size:11.5px; opacity:.7;">Charge horaire de la semaine (${String(weekStart.getDate()).padStart(2,'0')}/${String(weekStart.getMonth()+1).padStart(2,'0')} → ${String(weekEnd.getDate()).padStart(2,'0')}/${String(weekEnd.getMonth()+1).padStart(2,'0')})</div>`;
+  html += '<table class="hours-table"><thead><tr><th>Équipe</th>' + TEAMS.map(t=>`<th>${t}</th>`).join('') + '</tr></thead><tbody><tr><td>Heures</td>' +
+    TEAMS.map(t => `<td>${baseline[t]}h</td>`).join('') + '</tr></tbody></table>';
+
+  const variance = hoursVariance(baseline);
+  if(variance > 4){
+    html += `<div class="warn-box" style="margin-top:8px;">⚖️ Écart notable entre les équipes cette semaine — vérifie si un rééquilibrage est nécessaire.</div>`;
+  } else {
+    html += `<div class="ok-box" style="margin-top:8px;">⚖️ Charge horaire équilibrée entre les équipes cette semaine.</div>`;
+  }
+
+  box.innerHTML = html;
+  saveLastFormation();
+}
+
+function showMainTab(name){
+  document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.maintab').forEach(s => s.classList.toggle('active', s.id==='maintab-'+name));
+}
+
+(function initFormationDates(){
+  const t = new Date();
+  const fmt = dt => dt.toISOString().slice(0,10);
+  document.getElementById('fDebut').value = fmt(t);
+  document.getElementById('fFin').value = fmt(addDaysD(t,1));
+})();
+
+// =====================================================================
+// STOCKAGE LOCAL (localStorage) — congés + dernier programme de formation
+// =====================================================================
+const LS_CONGES = 'atelier_conges_v1';
+const LS_LAST_FORMATION = 'atelier_derniere_formation_v1';
+let storageAvailable = true;
+try {
+  localStorage.setItem('__test__','1');
+  localStorage.removeItem('__test__');
+} catch(e){
+  storageAvailable = false;
+}
+
+function loadConges(){
+  if(!storageAvailable) return [];
+  try { return JSON.parse(localStorage.getItem(LS_CONGES) || '[]'); }
+  catch(e){ return []; }
+}
+function saveConges(list){
+  if(!storageAvailable) return;
+  localStorage.setItem(LS_CONGES, JSON.stringify(list));
+}
+
+function renderConges(){
+  const box = document.getElementById('congesList');
+  let html = '';
+  if(!storageAvailable){
+    html += '<div class="warn-box">⚠️ Le stockage local n\'est pas disponible dans ce navigateur pour cette page (souvent le cas quand le fichier est ouvert localement plutôt qu\'hébergé en ligne). Les congés ajoutés ici seront perdus à la fermeture.</div>';
+  }
+  const list = loadConges().sort((a,b) => a.debut.localeCompare(b.debut));
+  if(list.length === 0){
+    html += '<div class="no-data">Aucun congé enregistré</div>';
+    box.innerHTML = html;
+    return;
+  }
+  html += list.map(c => {
+    const debutStr = formatFRDate(c.debut);
+    const finStr = formatFRDate(c.fin);
+    return `
+      <div class="conge-row">
+        <div>
+          <div class="conge-nom">${escHtml(c.nom)} <span class="type-tag">${escHtml(c.type)}</span></div>
+          <div class="conge-meta">Équipe ${escHtml(c.equipe)} · ${debutStr} → ${finStr}</div>
+        </div>
+        <div class="conge-actions">
+          <button onclick="editConge('${c.id}')">Modifier</button>
+          <button class="del" onclick="deleteConge('${c.id}')">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+  box.innerHTML = html;
+}
+function formatFRDate(iso){
+  const d = new Date(iso + 'T00:00:00');
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
+function escHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function submitConge(){
+  const id = document.getElementById('cId').value;
+  const nom = document.getElementById('cNom').value.trim();
+  const equipe = document.getElementById('cEquipe').value;
+  const type = document.getElementById('cType').value;
+  const debut = document.getElementById('cDebut').value;
+  const fin = document.getElementById('cFin').value;
+  if(!nom || !debut || !fin){ alert('Renseigne au moins le nom et les dates.'); return; }
+  if(fin < debut){ alert('La date de fin doit être après (ou égale à) la date de début.'); return; }
+
+  const list = loadConges();
+  if(id){
+    const idx = list.findIndex(c => c.id === id);
+    if(idx >= 0) list[idx] = { id, nom, equipe, type, debut, fin };
+  } else {
+    list.push({ id: 'c'+Date.now(), nom, equipe, type, debut, fin });
+  }
+  saveConges(list);
+  cancelEditConge();
+  renderConges();
+}
+function editConge(id){
+  const c = loadConges().find(c => c.id === id);
+  if(!c) return;
+  document.getElementById('cId').value = c.id;
+  document.getElementById('cNom').value = c.nom;
+  document.getElementById('cEquipe').value = c.equipe;
+  document.getElementById('cType').value = c.type;
+  document.getElementById('cDebut').value = c.debut;
+  document.getElementById('cFin').value = c.fin;
+  document.getElementById('cSubmitBtn').textContent = 'Mettre à jour';
+  document.getElementById('cCancelBtn').style.display = 'block';
+}
+function cancelEditConge(){
+  document.getElementById('cId').value = '';
+  document.getElementById('cNom').value = '';
+  document.getElementById('cDebut').value = '';
+  document.getElementById('cFin').value = '';
+  document.getElementById('cSubmitBtn').textContent = 'Ajouter';
+  document.getElementById('cCancelBtn').style.display = 'none';
+}
+function deleteConge(id){
+  if(!confirm('Supprimer ce congé ?')) return;
+  saveConges(loadConges().filter(c => c.id !== id));
+  renderConges();
+}
+
+// Persistance du dernier programme de formation généré
+function saveLastFormation(){
+  if(!storageAvailable) return;
+  const state = {
+    debut: document.getElementById('fDebut').value,
+    fin: document.getElementById('fFin').value,
+    duree: document.getElementById('fDuree').value,
+    teams: Array.from(document.querySelectorAll('.team-check input:checked')).map(el => el.value)
+  };
+  localStorage.setItem(LS_LAST_FORMATION, JSON.stringify(state));
+}
+function restoreLastFormation(){
+  if(!storageAvailable) return;
+  try {
+    const state = JSON.parse(localStorage.getItem(LS_LAST_FORMATION) || 'null');
+    if(!state) return;
+    document.getElementById('fDebut').value = state.debut;
+    document.getElementById('fFin').value = state.fin;
+    document.getElementById('fDuree').value = state.duree;
+    document.querySelectorAll('.team-check input').forEach(el => {
+      el.checked = state.teams.includes(el.value);
+    });
+    genererFormation();
+  } catch(e){}
+}
+
+render();
+setInterval(render, 60000);
+renderConges();
+restoreLastFormation();
+</script>
+</body>
+</html>
