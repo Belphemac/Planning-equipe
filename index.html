@@ -969,9 +969,9 @@ function loadFeries(){
 }
 function saveFeries(list){ if(storageAvailable) localStorage.setItem(LS_FERIES, JSON.stringify(list)); }
 
-function isWeekendOuFerie(date){
-  const dow = date.getDay(); // 0=dim, 6=sam
-  if(dow === 0 || dow === 6) return true;
+function isDimancheOuFerie(date){
+  const dow = date.getDay(); // 0=dimanche ; le samedi suit la règle de semaine
+  if(dow === 0) return true;
   const iso = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
   return loadFeries().includes(iso);
 }
@@ -981,19 +981,19 @@ function transportPourPoste(role, date){
   if(role === 'repos') return { aller:0, retour:0, total:0, detail:'—' };
   if(role === 'nuit'){
     const jourRetour = addDaysD(date, 1);
-    const weAller = isWeekendOuFerie(date);
-    const weRetour = isWeekendOuFerie(jourRetour);
-    const aller = weAller ? 1500 : 0;
-    const retour = weRetour ? 1500 : 0;
+    const dimancheOuFerieAller = isDimancheOuFerie(date);
+    const dimancheOuFerieRetour = isDimancheOuFerie(jourRetour);
+    const aller = dimancheOuFerieAller ? 1500 : 0;
+    const retour = dimancheOuFerieRetour ? 1500 : 0;
     return { aller, retour, total: aller+retour, detail: (aller||retour) ? `Aller ${aller}F + Retour ${retour}F` : 'Semaine — 0F' };
   }
   // matin ou apres : aller/retour le même jour
-  const we = isWeekendOuFerie(date);
-  if(we){
-    return { aller:1500, retour:1500, total:3000, detail:'Week-end/férié — Aller 1500F + Retour 1500F' };
+  const dimancheOuFerie = isDimancheOuFerie(date);
+  if(dimancheOuFerie){
+    return { aller:1500, retour:1500, total:3000, detail:'Dimanche/férié — Aller 1500F + Retour 1500F' };
   }
   if(role === 'apres'){
-    return { aller:0, retour:0, total:900, detail:'Semaine — forfait 900F' };
+    return { aller:0, retour:900, total:900, detail:'Retour après-midi — 900F' };
   }
   return { aller:0, retour:0, total:0, detail:'Semaine — 0F' };
 }
